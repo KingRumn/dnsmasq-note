@@ -4,12 +4,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -72,7 +72,7 @@ void tftp_request(struct listener *listen, time_t now)
 #elif defined(IP_RECVDSTADDR) && defined(IP_RECVIF)
     char control[CMSG_SPACE(sizeof(struct sockaddr_dl))];
 #endif
-  } control_u; 
+  } control_u;
 
   msg.msg_controllen = sizeof(control_u);
   msg.msg_control = control_u.control;
@@ -117,9 +117,9 @@ void tftp_request(struct listener *listen, time_t now)
 
       if (msg.msg_controllen < sizeof(struct cmsghdr))
         return;
-      
+
       addr.sa.sa_family = listen->family;
-      
+
 #if defined(HAVE_LINUX_NETWORK)
       if (listen->family == AF_INET)
 	for (cmptr = CMSG_FIRSTHDR(&msg); cmptr; cmptr = CMSG_NXTHDR(&msg, cmptr))
@@ -133,7 +133,7 @@ void tftp_request(struct listener *listen, time_t now)
 	      addr.in.sin_addr = p.p->ipi_spec_dst;
 	      if_index = p.p->ipi_ifindex;
 	    }
-      
+
 #elif defined(HAVE_SOLARIS_NETWORK)
       if (listen->family == AF_INET)
 	for (cmptr = CMSG_FIRSTHDR(&msg); cmptr; cmptr = CMSG_NXTHDR(&msg, cmptr))
@@ -149,7 +149,7 @@ void tftp_request(struct listener *listen, time_t now)
 	    else if (cmptr->cmsg_level == IPPROTO_IP && cmptr->cmsg_type == IP_RECVIF)
 	    if_index = *(p.i);
 	  }
-      
+
 #elif defined(IP_RECVDSTADDR) && defined(IP_RECVIF)
       if (listen->family == AF_INET)
 	for (cmptr = CMSG_FIRSTHDR(&msg); cmptr; cmptr = CMSG_NXTHDR(&msg, cmptr))
@@ -165,7 +165,7 @@ void tftp_request(struct listener *listen, time_t now)
 	    else if (cmptr->cmsg_level == IPPROTO_IP && cmptr->cmsg_type == IP_RECVIF)
 	      if_index = p.s->sdl_index;
 	  }
-	  
+
 #endif
 
       if (listen->family == AF_INET6)
@@ -178,17 +178,17 @@ void tftp_request(struct listener *listen, time_t now)
                   struct in6_pktinfo *p;
                 } p;
                 p.c = CMSG_DATA(cmptr);
-                  
+
                 addr.in6.sin6_addr = p.p->ipi6_addr;
                 if_index = p.p->ipi6_ifindex;
               }
         }
-      
+
       if (!indextoname(listen->tftpfd, if_index, namebuff))
 	return;
 
       name = namebuff;
-      
+
       addra.addr4 = addr.in.sin_addr;
 
       if (listen->family == AF_INET6)
@@ -210,13 +210,13 @@ void tftp_request(struct listener *listen, time_t now)
 	  if (!iface_check(listen->family, &addra, name, NULL))
 	    {
 	      if (!option_bool(OPT_CLEVERBIND))
-		enumerate_interfaces(0); 
+		enumerate_interfaces(0);
 	      if (!loopback_exception(listen->tftpfd, listen->family, &addra, name) &&
 		  !label_exception(if_index, listen->family, &addra))
 		return;
 	    }
-	  
-#ifdef HAVE_DHCP      
+
+#ifdef HAVE_DHCP
 	  /* allowed interfaces are the same as for DHCP */
 	  for (tmp = daemon->dhcp_except; tmp; tmp = tmp->next)
 	    if (tmp->name && wildcard_match(tmp->name, name))
@@ -227,9 +227,9 @@ void tftp_request(struct listener *listen, time_t now)
       safe_strncpy(ifr.ifr_name, name, IF_NAMESIZE);
       if (ioctl(listen->tftpfd, SIOCGIFMTU, &ifr) != -1)
 	{
-	  mtu = ifr.ifr_mtu;  
+	  mtu = ifr.ifr_mtu;
 	  if (daemon->tftp_mtu != 0 && daemon->tftp_mtu < mtu)
-	    mtu = daemon->tftp_mtu;    
+	    mtu = daemon->tftp_mtu;
 	}
     }
 
@@ -239,10 +239,10 @@ void tftp_request(struct listener *listen, time_t now)
 
   if (name)
     {
-      /* check for per-interface prefix */ 
+      /* check for per-interface prefix */
       for (pref = daemon->if_prefix; pref; pref = pref->next)
 	if (strcmp(pref->interface, name) == 0)
-	  prefix = pref->prefix;  
+	  prefix = pref->prefix;
     }
 
   if (listen->family == AF_INET)
@@ -264,13 +264,13 @@ void tftp_request(struct listener *listen, time_t now)
 
   if (!(transfer = whine_malloc(sizeof(struct tftp_transfer))))
     return;
-  
+
   if ((transfer->sockfd = socket(listen->family, SOCK_DGRAM, 0)) == -1)
     {
       free(transfer);
       return;
     }
-  
+
   transfer->peer = peer;
   transfer->timeout = now + 2;
   transfer->backoff = 1;
@@ -280,9 +280,9 @@ void tftp_request(struct listener *listen, time_t now)
   transfer->file = NULL;
   transfer->opt_blocksize = transfer->opt_transize = 0;
   transfer->netascii = transfer->carrylf = 0;
- 
+
   prettyprint_addr(&peer, daemon->addrbuff);
-  
+
   /* if we have a nailed-down range, iterate until we find a free one. */
   while (1)
     {
@@ -295,12 +295,12 @@ void tftp_request(struct listener *listen, time_t now)
 	  if (errno == EADDRINUSE && daemon->start_tftp_port != 0)
 	    {
 	      if (++port <= daemon->end_tftp_port)
-		{ 
+		{
 		  if (listen->family == AF_INET)
 		    addr.in.sin_port = htons(port);
 		  else
 		    addr.in6.sin6_port = htons(port);
-		  
+
 		  continue;
 		}
 	      my_syslog(MS_TFTP | LOG_ERR, _("unable to get free port for TFTP"));
@@ -310,7 +310,7 @@ void tftp_request(struct listener *listen, time_t now)
 	}
       break;
     }
-  
+
   p = packet + 2;
   end = packet + len;
 
@@ -326,7 +326,7 @@ void tftp_request(struct listener *listen, time_t now)
     {
       if (strcasecmp(mode, "netascii") == 0)
 	transfer->netascii = 1;
-      
+
       while ((opt = next(&p, end)))
 	{
 	  if (strcasecmp(opt, "blksize") == 0)
@@ -359,7 +359,7 @@ void tftp_request(struct listener *listen, time_t now)
 	  *p = '/';
 	else if (option_bool(OPT_TFTP_LC))
 	  *p = tolower(*p);
-		
+
       strcpy(daemon->namebuff, "/");
       if (prefix)
 	{
@@ -373,20 +373,20 @@ void tftp_request(struct listener *listen, time_t now)
 	    {
 	      size_t oldlen = strlen(daemon->namebuff);
 	      struct stat statbuf;
-	      
+
 	      strncat(daemon->namebuff, daemon->addrbuff, (MAXDNAME-1) - strlen(daemon->namebuff));
 	      strncat(daemon->namebuff, "/", (MAXDNAME-1) - strlen(daemon->namebuff));
-	      
+
 	      /* remove unique-directory if it doesn't exist */
 	      if (stat(daemon->namebuff, &statbuf) == -1 || !S_ISDIR(statbuf.st_mode))
 		daemon->namebuff[oldlen] = 0;
 	    }
-	  
+
 	  if (option_bool(OPT_TFTP_APREF_MAC))
 	    {
 	      unsigned char *macaddr = NULL;
 	      unsigned char macbuf[DHCP_CHADDR_MAX];
-	      
+
 #ifdef HAVE_DHCP
 	      if (daemon->dhcp && peer.sa.sa_family == AF_INET)
 	        {
@@ -396,11 +396,11 @@ void tftp_request(struct listener *listen, time_t now)
 		    macaddr = lease->hwaddr;
 		}
 #endif
-	      
+
 	      /* If no luck, try to find in ARP table. This only works if client is in same (V)LAN */
 	      if (!macaddr && find_mac(&peer, macbuf, 1, now) > 0)
 		macaddr = macbuf;
-	      
+
 	      if (macaddr)
 	        {
 		  size_t oldlen = strlen(daemon->namebuff);
@@ -408,13 +408,13 @@ void tftp_request(struct listener *listen, time_t now)
 
 		  snprintf(daemon->namebuff + oldlen, (MAXDNAME-1) - oldlen, "%.2x-%.2x-%.2x-%.2x-%.2x-%.2x/",
 			   macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
-		  
+
 		  /* remove unique-directory if it doesn't exist */
 		  if (stat(daemon->namebuff, &statbuf) == -1 || !S_ISDIR(statbuf.st_mode))
 		    daemon->namebuff[oldlen] = 0;
 		}
 	    }
-	  
+
 	  /* Absolute pathnames OK if they match prefix */
 	  if (filename[0] == '/')
 	    {
@@ -427,7 +427,7 @@ void tftp_request(struct listener *listen, time_t now)
       else if (filename[0] == '/')
 	daemon->namebuff[0] = 0;
       strncat(daemon->namebuff, filename, (MAXDNAME-1) - strlen(daemon->namebuff));
-      
+
       /* check permissions and open file */
       if ((transfer->file = check_tftp_fileperm(&len, prefix)))
 	{
@@ -437,10 +437,10 @@ void tftp_request(struct listener *listen, time_t now)
 	    is_err = 0;
 	}
     }
-  
-  while (sendto(transfer->sockfd, packet, len, 0, 
+
+  while (sendto(transfer->sockfd, packet, len, 0,
 		(struct sockaddr *)&peer, sa_len(&peer)) == -1 && errno == EINTR);
-  
+
   if (is_err)
     free_transfer(transfer);
   else
@@ -449,7 +449,7 @@ void tftp_request(struct listener *listen, time_t now)
       daemon->tftp_trans = transfer;
     }
 }
- 
+
 static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
 {
   char *packet = daemon->packet, *namebuff = daemon->namebuff;
@@ -462,7 +462,7 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
   /* trick to ban moving out of the subtree */
   if (prefix && strstr(namebuff, "/../"))
     goto perm;
-  
+
   if ((fd = open(namebuff, O_RDONLY)) == -1)
     {
       if (errno == ENOENT)
@@ -475,11 +475,11 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
       else
 	goto oops;
     }
-  
+
   /* stat the file descriptor to avoid stat->open races */
   if (fstat(fd, &statbuf) == -1)
     goto oops;
-  
+
   /* running as root, must be world-readable */
   if (uid == 0)
     {
@@ -489,14 +489,14 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
   /* in secure mode, must be owned by user running dnsmasq */
   else if (option_bool(OPT_TFTP_SECURE) && uid != statbuf.st_uid)
     goto perm;
-      
-  /* If we're doing many transfers from the same file, only 
-     open it once this saves lots of file descriptors 
-     when mass-booting a big cluster, for instance. 
+
+  /* If we're doing many transfers from the same file, only
+     open it once this saves lots of file descriptors
+     when mass-booting a big cluster, for instance.
      Be conservative and only share when inode and name match
      this keeps error messages sane. */
   for (t = daemon->tftp_trans; t; t = t->next)
-    if (t->file->dev == statbuf.st_dev && 
+    if (t->file->dev == statbuf.st_dev &&
 	t->file->inode == statbuf.st_ino &&
 	strcmp(t->file->filename, namebuff) == 0)
       {
@@ -504,7 +504,7 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
 	t->file->refcount++;
 	return t->file;
       }
-  
+
   if (!(file = whine_malloc(sizeof(struct tftp_file) + strlen(namebuff) + 1)))
     {
       errno = ENOMEM;
@@ -518,7 +518,7 @@ static struct tftp_file *check_tftp_fileperm(ssize_t *len, char *prefix)
   file->refcount = 1;
   strcpy(file->filename, namebuff);
   return file;
-  
+
  perm:
   errno = EACCES;
   *len =  tftp_err(ERR_PERM, packet, _("cannot access %s: %s"), namebuff);
@@ -537,26 +537,26 @@ void check_tftp_listeners(time_t now)
 {
   struct tftp_transfer *transfer, *tmp, **up;
   ssize_t len;
-  
+
   struct ack {
     unsigned short op, block;
   } *mess = (struct ack *)daemon->packet;
-  
+
   /* Check for activity on any existing transfers */
   for (transfer = daemon->tftp_trans, up = &daemon->tftp_trans; transfer; transfer = tmp)
     {
       tmp = transfer->next;
-      
+
       prettyprint_addr(&transfer->peer, daemon->addrbuff);
-     
+
       if (poll_check(transfer->sockfd, POLLIN))
 	{
 	  /* we overwrote the buffer... */
 	  daemon->srv_save = NULL;
-	  
+
 	  if ((len = recv(transfer->sockfd, daemon->packet, daemon->packet_buff_sz, 0)) >= (ssize_t)sizeof(struct ack))
 	    {
-	      if (ntohs(mess->op) == OP_ACK && ntohs(mess->block) == (unsigned short)transfer->block) 
+	      if (ntohs(mess->op) == OP_ACK && ntohs(mess->block) == (unsigned short)transfer->block)
 		{
 		  /* Got ack, ensure we take the (re)transmit path */
 		  transfer->timeout = now;
@@ -569,34 +569,34 @@ void check_tftp_listeners(time_t now)
 		  char *p = daemon->packet + sizeof(struct ack);
 		  char *end = daemon->packet + len;
 		  char *err = next(&p, end);
-		  
+
 		  /* Sanitise error message */
 		  if (!err)
 		    err = "";
 		  else
 		    sanitise(err);
-		  
+
 		  my_syslog(MS_TFTP | LOG_ERR, _("error %d %s received from %s"),
-			    (int)ntohs(mess->block), err, 
-			    daemon->addrbuff);	
-		  
+			    (int)ntohs(mess->block), err,
+			    daemon->addrbuff);
+
 		  /* Got err, ensure we take abort */
 		  transfer->timeout = now;
 		  transfer->backoff = 100;
 		}
 	    }
 	}
-      
+
       if (difftime(now, transfer->timeout) >= 0.0)
 	{
 	  int endcon = 0;
 
 	  /* timeout, retransmit */
 	  transfer->timeout += 1 + (1<<transfer->backoff);
-	  	  
+
 	  /* we overwrote the buffer... */
 	  daemon->srv_save = NULL;
-	 
+
 	  if ((len = get_block(daemon->packet, transfer)) == -1)
 	    {
 	      len = tftp_err_oops(daemon->packet, transfer->file->filename);
@@ -611,9 +611,9 @@ void check_tftp_listeners(time_t now)
 	    }
 
 	  if (len != 0)
-	    while(sendto(transfer->sockfd, daemon->packet, len, 0, 
+	    while(sendto(transfer->sockfd, daemon->packet, len, 0,
 			 (struct sockaddr *)&transfer->peer, sa_len(&transfer->peer)) == -1 && errno == EINTR);
-	  
+
 	  if (endcon || len == 0)
 	    {
 	      strcpy(daemon->namebuff, transfer->file->filename);
@@ -634,7 +634,7 @@ void check_tftp_listeners(time_t now)
 	}
 
       up = &transfer->next;
-    }    
+    }
 }
 
 static void free_transfer(struct tftp_transfer *transfer)
@@ -653,7 +653,7 @@ static char *next(char **p, char *end)
   char *ret = *p;
   size_t len;
 
-  if (*(end-1) != 0 || 
+  if (*(end-1) != 0 ||
       *p == end ||
       (len = strlen(ret)) == 0)
     return NULL;
@@ -672,7 +672,7 @@ static void sanitise(char *buf)
 
 }
 
-#define MAXMESSAGE 500 /* limit to make packet < 512 bytes and definitely smaller than buffer */ 
+#define MAXMESSAGE 500 /* limit to make packet < 512 bytes and definitely smaller than buffer */
 static ssize_t tftp_err(int err, char *packet, char *message, char *file)
 {
   struct errmess {
@@ -681,17 +681,17 @@ static ssize_t tftp_err(int err, char *packet, char *message, char *file)
   } *mess = (struct errmess *)packet;
   ssize_t len, ret = 4;
   char *errstr = strerror(errno);
-  
+
   memset(packet, 0, daemon->packet_buff_sz);
   sanitise(file);
-  
+
   mess->op = htons(OP_ERR);
   mess->err = htons(err);
   len = snprintf(mess->message, MAXMESSAGE,  message, file, errstr);
   ret += (len < MAXMESSAGE) ? len + 1 : MAXMESSAGE; /* include terminating zero */
-  
+
   my_syslog(MS_TFTP | LOG_ERR, "%s", mess->message);
-  
+
   return  ret;
 }
 
@@ -706,7 +706,7 @@ static ssize_t tftp_err_oops(char *packet, char *file)
 static ssize_t get_block(char *packet, struct tftp_transfer *transfer)
 {
   memset(packet, 0, daemon->packet_buff_sz);
-  
+
   if (transfer->block == 0)
     {
       /* send OACK */
@@ -715,7 +715,7 @@ static ssize_t get_block(char *packet, struct tftp_transfer *transfer)
 	unsigned short op;
 	char data[];
       } *mess = (struct oackmess *)packet;
-      
+
       p = mess->data;
       mess->op = htons(OP_OACK);
       if (transfer->opt_blocksize)
@@ -738,24 +738,24 @@ static ssize_t get_block(char *packet, struct tftp_transfer *transfer)
 	unsigned short op, block;
 	unsigned char data[];
       } *mess = (struct datamess *)packet;
-      
-      size_t size = transfer->file->size - transfer->offset; 
-      
+
+      size_t size = transfer->file->size - transfer->offset;
+
       if (transfer->offset > transfer->file->size)
 	return 0; /* finished */
-      
+
       if (size > transfer->blocksize)
 	size = transfer->blocksize;
-      
+
       mess->op = htons(OP_DATA);
       mess->block = htons((unsigned short)(transfer->block));
-      
+
       if (lseek(transfer->file->fd, transfer->offset, SEEK_SET) == (off_t)-1 ||
 	  !read_write(transfer->file->fd, mess->data, size, 1))
 	return -1;
-      
+
       transfer->expansion = 0;
-      
+
       /* Map '\n' to CR-LF in netascii mode */
       if (transfer->netascii)
 	{
@@ -771,15 +771,15 @@ static ssize_t get_block(char *packet, struct tftp_transfer *transfer)
 		  size++; /* room in this block */
 		else  if (i == size - 1)
 		  newcarrylf = 1; /* don't expand LF again if it moves to the next block */
-		  
+
 		/* make space and insert CR */
 		memmove(&mess->data[i+1], &mess->data[i], size - (i + 1));
 		mess->data[i] = '\r';
-		
+
 		i++;
 	      }
 	  transfer->carrylf = newcarrylf;
-	  
+
 	}
 
       return size + 4;

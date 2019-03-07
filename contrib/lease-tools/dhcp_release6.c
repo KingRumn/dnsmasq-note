@@ -6,29 +6,29 @@
 
 /* Send a DHCPRELEASE message  to IPv6 multicast address  via the specified interface
  to tell the local DHCP server to delete a particular lease.
- 
+
  The interface argument is the interface in which a DHCP
  request _would_ be received if it was coming from the client,
  rather than being faked up here.
- 
+
  The client-id argument is colon-separated hex string and mandatory. Normally
  it can be found in leases file both on client and server
 
  The server-id argument is colon-separated hex string and mandatory. Normally
  it can be found in leases file both on client and server.
- 
+
  The iaid argument is numeric string and mandatory. Normally
  it can be found in leases file both on client and server.
- 
+
  IP is an IPv6 address to release
- 
+
  If --dry-run is specified, dhcp_release6 just prints hexadecimal representation of
  packet to send to stdout and exits.
- 
+
  If --help is specified, dhcp_release6 print usage information to stdout and exits
- 
- 
- 
+
+
+
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,7 +61,7 @@ enum DHCP6_TYPES
     INFORMATION_REQUEST = 11,
     RELAY_FORW = 12,
     RELAY_REPL = 13
-    
+
   };
 
 enum DHCP6_OPTIONS
@@ -139,7 +139,7 @@ struct dhcp6_iana_option {
 
 struct dhcp6_packet {
   size_t len;
-  char buf[2048];  
+  char buf[2048];
 };
 
 size_t pack_duid(const char* str, char* dst)
@@ -154,7 +154,7 @@ size_t pack_duid(const char* str, char* dst)
       write_pos += 1;
       tmp = NULL;
     }
-  
+
   free(tmp_to_free);
   return write_pos;
 }
@@ -217,7 +217,7 @@ struct dhcp6_packet create_release_packet(const char* iaid, const char* ip, cons
   result.buf[0] = RELEASE;
   /* tx_id */
   bzero(result.buf+1, 3);
-  
+
   struct dhcp6_option client_option = create_client_id_option(client_id);
   struct dhcp6_option server_option = create_server_id_option(server_id);
   struct dhcp6_iaaddr_option iaaddr_option = create_iaadr_option(ip);
@@ -273,7 +273,7 @@ int16_t parse_packet(char* buf, size_t len)
   size_t current_pos = 4;
   if (type != REPLY )
     return NOT_REPLY_CODE;
-  
+
   char option_value[1024];
   while (current_pos < len)
     {
@@ -296,7 +296,7 @@ int16_t parse_packet(char* buf, size_t len)
 	    }
 
 	  /* Got success status, return that if there's no specific error in an IA_NA. */
-	  ret = SUCCESS;   
+	  ret = SUCCESS;
         }
 
       if (option_type == IA_NA )
@@ -305,7 +305,7 @@ int16_t parse_packet(char* buf, size_t len)
 	  if (result)
 	    return result;
 	}
-      
+
       current_pos += option_len;
     }
 
@@ -315,7 +315,7 @@ int16_t parse_packet(char* buf, size_t len)
 void usage(const char* arg, FILE* stream)
 {
   const char* usage_string ="--ip IPv6 --iface IFACE --server-id SERVER_ID --client-id CLIENT_ID --iaid IAID [--dry-run] | --help";
-  fprintf (stream, "Usage: %s %s\n", arg, usage_string);   
+  fprintf (stream, "Usage: %s %s\n", arg, usage_string);
 }
 
 int send_release_packet(const char* iface, struct dhcp6_packet* packet)
@@ -329,14 +329,14 @@ int send_release_packet(const char* iface, struct dhcp6_packet* packet)
       perror("creating socket");
       return -1;
     }
-  
+
     if (setsockopt(sock, SOL_SOCKET, 25, iface, strlen(iface)) == -1)
       {
         perror("SO_BINDTODEVICE");
         close(sock);
         return -1;
       }
-    
+
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin6_family = AF_INET6;
     client_addr.sin6_family = AF_INET6;
@@ -355,7 +355,7 @@ int send_release_packet(const char* iface, struct dhcp6_packet* packet)
 	    perror("sendto failed");
             exit(4);
 	  }
-	
+
         recv_size = recvfrom(sock, response, sizeof(response), MSG_DONTWAIT, NULL, 0);
         if (recv_size == -1)
 	  {
@@ -369,7 +369,7 @@ int send_release_packet(const char* iface, struct dhcp6_packet* packet)
                 perror("recvfrom");
 	      }
 	  }
-	
+
         int16_t result = parse_packet(response, recv_size);
         if (result == NOT_REPLY_CODE)
 	  {
@@ -383,7 +383,7 @@ int send_release_packet(const char* iface, struct dhcp6_packet* packet)
 
     close(sock);
     fprintf(stderr, "Response timed out\n");
-    return -1;   
+    return -1;
 }
 
 
@@ -402,13 +402,13 @@ int main(int argc, char *  const argv[])
       int c = getopt_long(argc, argv, "a:s:c:n:i:hd", longopts, &option_index);
       if (c == -1)
 	break;
-        
+
       switch(c)
 	{
 	case 0:
 	  if (longopts[option_index].flag !=0)
 	    break;
-	  
+
 	  printf ("option %s", longopts[option_index].name);
 	  if (optarg)
 	    printf (" with arg %s", optarg);
@@ -441,38 +441,38 @@ int main(int argc, char *  const argv[])
 	  return -1;
 	default:
 	  abort();
-	  
+
         }
     }
-  
+
   if (iaid == UNINITIALIZED)
     {
       fprintf(stderr, "Missing required iaid parameter\n");
       usage(argv[0], stderr);
       return -1;
     }
-  
+
     if (server_id == UNINITIALIZED)
       {
         fprintf(stderr, "Missing required server-id parameter\n");
         usage(argv[0], stderr);
         return -1;
       }
-    
+
     if (client_id == UNINITIALIZED)
       {
         fprintf(stderr, "Missing required client-id parameter\n");
         usage(argv[0], stderr);
         return -1;
       }
-    
+
     if (ip == UNINITIALIZED)
       {
         fprintf(stderr, "Missing required ip parameter\n");
         usage(argv[0], stderr);
         return -1;
       }
-    
+
     if (iface == UNINITIALIZED)
       {
 	fprintf(stderr, "Missing required iface parameter\n");
@@ -480,8 +480,8 @@ int main(int argc, char *  const argv[])
         return -1;
       }
 
-    
-    
+
+
     struct dhcp6_packet packet = create_release_packet(iaid, ip, client_id, server_id);
 
     if (dry_run)
@@ -490,7 +490,7 @@ int main(int argc, char *  const argv[])
 
         for(i=0; i<packet.len; i++)
 	  printf("%hhx", packet.buf[i]);
-        
+
         printf("\n");
         return 0;
       }

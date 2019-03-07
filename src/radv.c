@@ -4,12 +4,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -54,10 +54,10 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
                     int send_iface);
 static int send_ra_to_aliases(int index, unsigned int type, char *mac, size_t maclen, void *parm);
 static int add_prefixes(struct in6_addr *local,  int prefix,
-			int scope, int if_index, int flags, 
+			int scope, int if_index, int flags,
 			unsigned int preferred, unsigned int valid, void *vparam);
 static int iface_search(struct in6_addr *local,  int prefix,
-			int scope, int if_index, int flags, 
+			int scope, int if_index, int flags,
 			int prefered, int valid, void *vparam);
 static int add_lla(int index, unsigned int type, char *mac, size_t maclen, void *parm);
 static void new_timeout(struct dhcp_context *context, char *iface_name, time_t now);
@@ -78,15 +78,15 @@ void ra_init(time_t now)
   int val = 255; /* radvd uses this value */
   socklen_t len = sizeof(int);
   struct dhcp_context *context;
-  
+
   /* ensure this is around even if we're not doing DHCPv6 */
   expand_buf(&daemon->outpacket, sizeof(struct dhcp_packet));
- 
+
   /* See if we're guessing SLAAC addresses, if so we need to receive ping replies */
   for (context = daemon->dhcp6; context; context = context->next)
     if ((context->flags & CONTEXT_RA_NAME))
       break;
-  
+
   /* Need ICMP6 socket for transmission for DHCPv6 even when not doing RA. */
 
   ICMP6_FILTER_SETBLOCKALL(&filter);
@@ -96,7 +96,7 @@ void ra_init(time_t now)
       if (context)
 	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY, &filter);
     }
-  
+
   if ((fd = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) == -1 ||
       getsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hop_limit, &len) ||
 #if defined(IPV6_TCLASS) && defined(IPTOS_CLASS_CS6)
@@ -108,20 +108,20 @@ void ra_init(time_t now)
       setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &val, sizeof(val)) ||
       setsockopt(fd, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter)) == -1)
     die (_("cannot create ICMPv6 socket: %s"), NULL, EC_BADNET);
-  
+
    daemon->icmp6fd = fd;
-   
+
    if (daemon->doing_ra)
      ra_start_unsolicited(now, NULL);
 }
 
 void ra_start_unsolicited(time_t now, struct dhcp_context *context)
-{   
+{
    /* init timers so that we do ra's for some/all soon. some ra_times will end up zeroed
      if it's not appropriate to advertise those contexts.
      This gets re-called on a netlink route-change to re-do the advertisement
      and pick up new interfaces */
-  
+
   if (context)
     context->ra_short_period_start = context->ra_time = now;
   else
@@ -137,7 +137,7 @@ void ra_start_unsolicited(time_t now, struct dhcp_context *context)
 void icmp6_packet(time_t now)
 {
   char interface[IF_NAMESIZE+1];
-  ssize_t sz; 
+  ssize_t sz;
   int if_index = 0;
   struct cmsghdr *cmptr;
   struct msghdr msg;
@@ -157,12 +157,12 @@ void icmp6_packet(time_t now)
   msg.msg_namelen = sizeof(from);
   msg.msg_iov = &daemon->outpacket;
   msg.msg_iovlen = 1;
-  
+
   if ((sz = recv_dhcp_packet(daemon->icmp6fd, &msg)) == -1 || sz < 8)
     return;
-   
+
   packet = (unsigned char *)daemon->outpacket.iov_base;
-  
+
   for (cmptr = CMSG_FIRSTHDR(&msg); cmptr; cmptr = CMSG_NXTHDR(&msg, cmptr))
     if (cmptr->cmsg_level == IPPROTO_IPV6 && cmptr->cmsg_type == daemon->v6pktinfo)
       {
@@ -171,30 +171,30 @@ void icmp6_packet(time_t now)
 	  struct in6_pktinfo *p;
 	} p;
 	p.c = CMSG_DATA(cmptr);
-        
+
 	if_index = p.p->ipi6_ifindex;
       }
-  
+
   if (!indextoname(daemon->icmp6fd, if_index, interface))
     return;
-    
+
   if (!iface_check(AF_LOCAL, NULL, interface, NULL))
     return;
-  
+
   for (tmp = daemon->dhcp_except; tmp; tmp = tmp->next)
     if (tmp->name && wildcard_match(tmp->name, interface))
       return;
- 
+
   if (packet[1] != 0)
     return;
-  
+
   if (packet[0] == ICMP6_ECHO_REPLY)
-    lease_ping_reply(&from.sin6_addr, packet, interface); 
+    lease_ping_reply(&from.sin6_addr, packet, interface);
   else if (packet[0] == ND_ROUTER_SOLICIT)
     {
       char *mac = "";
       struct dhcp_bridge *bridge, *alias;
-      
+
       /* look for link-layer address option for logging */
       if (sz >= 16 && packet[8] == ICMP6_OPT_SOURCE_MAC && (packet[9] * 8) + 8 <= sz)
 	{
@@ -204,7 +204,7 @@ void icmp6_packet(time_t now)
 	  print_mac(daemon->namebuff, &packet[10], (packet[9] * 8) - 2);
 	  mac = daemon->namebuff;
 	}
-         
+
       if (!option_bool(OPT_QUIET_RA))
 	my_syslog(MS_DHCP | LOG_INFO, "RTR-SOLICIT(%s) %s", interface, mac);
 
@@ -251,7 +251,7 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
 #ifdef HAVE_LINUX_NETWORK
   FILE *f;
 #endif
-  
+
   parm.ind = iface;
   parm.managed = 0;
   parm.other = 0;
@@ -263,12 +263,12 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
   parm.glob_pref_time = parm.link_pref_time = parm.ula_pref_time = 0;
   parm.adv_interval = calc_interval(ra_param);
   parm.prio = calc_prio(ra_param);
-  
+
   reset_counter();
-  
+
   if (!(ra = expand(sizeof(struct ra_packet))))
     return;
-  
+
   ra->type = ND_ROUTER_ADVERT;
   ra->code = 0;
   ra->hop_limit = hop_limit;
@@ -280,8 +280,8 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
   /* set tag with name == interface */
   iface_id.net = iface_name;
   iface_id.next = NULL;
-  parm.tags = &iface_id; 
-  
+  parm.tags = &iface_id;
+
   for (context = daemon->dhcp6; context; context = context->next)
     {
       context->flags &= ~CONTEXT_RA_DONE;
@@ -296,14 +296,14 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
   min_pref_time = 0xffffffff;
   if (parm.glob_pref_time != 0 && parm.glob_pref_time < min_pref_time)
     min_pref_time = parm.glob_pref_time;
-  
+
   if (parm.ula_pref_time != 0 && parm.ula_pref_time < min_pref_time)
     min_pref_time = parm.ula_pref_time;
 
   if (parm.link_pref_time != 0 && parm.link_pref_time < min_pref_time)
     min_pref_time = parm.link_pref_time;
 
-  /* Look for constructed contexts associated with addresses which have gone, 
+  /* Look for constructed contexts associated with addresses which have gone,
      and advertise them with preferred_time == 0  RFC 6204 4.3 L-13 */
   for (up = &daemon->dhcp6, context = daemon->dhcp6; context; context = tmp)
     {
@@ -312,16 +312,16 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
       if (context->if_index == iface && (context->flags & CONTEXT_OLD))
 	{
 	  unsigned int old = difftime(now, context->address_lost_time);
-	  
+
 	  if (old > context->saved_valid)
-	    { 
+	    {
 	      /* We've advertised this enough, time to go */
-	     
+
 	      /* If this context held the timeout, and there's another context in use
 		 transfer the timeout there. */
 	      if (context->ra_time != 0 && parm.found_context && parm.found_context->ra_time == 0)
 		new_timeout(parm.found_context, iface_name, now);
-	      
+
 	      *up = context->next;
 	      free(context);
 	    }
@@ -335,14 +335,14 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
 
 	      /* zero net part of address */
 	      setaddr6part(&local, addr6part(&local) & ~((context->prefix == 64) ? (u64)-1LL : (1LLU << (128 - context->prefix)) - 1LLU));
-	     
-	      
+
+
 	      if (context->flags & CONTEXT_RA)
 		{
 		  do_slaac = 1;
 		  if (context->flags & CONTEXT_DHCP)
 		    {
-		      parm.other = 1; 
+		      parm.other = 1;
 		      if (!(context->flags & CONTEXT_RA_STATELESS))
 			parm.managed = 1;
 		    }
@@ -368,29 +368,29 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
                     ((context->flags & CONTEXT_RA_OFF_LINK) ? 0 : 0x80);
 		  opt->valid_lifetime = htonl(context->saved_valid - old);
 		  opt->preferred_lifetime = htonl(0);
-		  opt->reserved = 0; 
+		  opt->reserved = 0;
 		  opt->prefix = local;
-		  
+
 		  inet_ntop(AF_INET6, &local, daemon->addrbuff, ADDRSTRLEN);
 		  if (!option_bool(OPT_QUIET_RA))
-		    my_syslog(MS_DHCP | LOG_INFO, "RTR-ADVERT(%s) %s old prefix", iface_name, daemon->addrbuff); 		    
+		    my_syslog(MS_DHCP | LOG_INFO, "RTR-ADVERT(%s) %s old prefix", iface_name, daemon->addrbuff);
 		}
-	   
+
 	      up = &context->next;
 	    }
 	}
       else
 	up = &context->next;
     }
-    
+
   /* If we're advertising only old prefixes, set router lifetime to zero. */
   if (old_prefix && !parm.found_context)
     ra->lifetime = htons(0);
 
   /* No prefixes to advertise. */
   if (!old_prefix && !parm.found_context)
-    return; 
-  
+    return;
+
   /* If we're sending router address instead of prefix in at least on prefix,
      include the advertisement interval option. */
   if (parm.adv_router)
@@ -428,20 +428,20 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
       put_opt6_short(0);
       put_opt6_long(mtu);
     }
-     
+
   iface_enumerate(AF_LOCAL, &send_iface, add_lla);
- 
+
   /* RDNSS, RFC 6106, use relevant DHCP6 options */
   (void)option_filter(parm.tags, NULL, daemon->dhcp_opts6);
-  
+
   for (opt_cfg = daemon->dhcp_opts6; opt_cfg; opt_cfg = opt_cfg->next)
     {
       int i;
-      
+
       /* netids match and not encapsulated? */
       if (!(opt_cfg->flags & DHOPT_TAGOK))
         continue;
-      
+
       if (opt_cfg->opt == OPTION6_DNS_SERVER)
         {
 	  struct in6_addr *a;
@@ -451,9 +451,9 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
 
           if (opt_cfg->len == 0)
 	    continue;
-	  
+
 	  /* reduce len for any addresses we can't substitute */
-	  for (a = (struct in6_addr *)opt_cfg->val, len = opt_cfg->len, i = 0; 
+	  for (a = (struct in6_addr *)opt_cfg->val, len = opt_cfg->len, i = 0;
 	       i < opt_cfg->len; i += IN6ADDRSZ, a++)
 	    if ((IN6_IS_ADDR_UNSPECIFIED(a) && parm.glob_pref_time == 0) ||
 		(IN6_IS_ADDR_ULA_ZERO(a) && parm.ula_pref_time == 0) ||
@@ -466,7 +466,7 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
 	      put_opt6_char((len/8) + 1);
 	      put_opt6_short(0);
 	      put_opt6_long(min_pref_time);
-	 
+
 	      for (a = (struct in6_addr *)opt_cfg->val, i = 0; i <  opt_cfg->len; i += IN6ADDRSZ, a++)
 		if (IN6_IS_ADDR_UNSPECIFIED(a))
 		  {
@@ -487,30 +487,30 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
 		  put_opt6(a, IN6ADDRSZ);
 	    }
 	}
-      
+
       if (opt_cfg->opt == OPTION6_DOMAIN_SEARCH && opt_cfg->len != 0)
 	{
 	  int len = ((opt_cfg->len+7)/8);
-	  
+
 	  put_opt6_char(ICMP6_OPT_DNSSL);
 	  put_opt6_char(len + 1);
 	  put_opt6_short(0);
-	  put_opt6_long(min_pref_time); 
+	  put_opt6_long(min_pref_time);
 	  put_opt6(opt_cfg->val, opt_cfg->len);
-	  
+
 	  /* pad */
 	  for (i = opt_cfg->len; i < len * 8; i++)
 	    put_opt6_char(0);
 	}
     }
-	
+
   if (daemon->port == NAMESERVER_PORT && !done_dns && parm.link_pref_time != 0)
     {
       /* default == us, as long as we are supplying DNS service. */
       put_opt6_char(ICMP6_OPT_RDNSS);
       put_opt6_char(3);
       put_opt6_short(0);
-      put_opt6_long(min_pref_time); 
+      put_opt6_long(min_pref_time);
       put_opt6(&parm.link_local, IN6ADDRSZ);
     }
 
@@ -518,8 +518,8 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
   if (parm.managed)
     ra->flags |= 0x80; /* M flag, managed, */
    if (parm.other)
-    ra->flags |= 0x40; /* O flag, other */ 
-			
+    ra->flags |= 0x40; /* O flag, other */
+
   /* decide where we're sending */
   memset(&addr, 0, sizeof(addr));
 #ifdef HAVE_SOCKADDR_SA_LEN
@@ -536,14 +536,14 @@ static void send_ra_alias(time_t now, int iface, char *iface_name, struct in6_ad
     }
   else
     {
-      inet_pton(AF_INET6, ALL_NODES, &addr.sin6_addr); 
+      inet_pton(AF_INET6, ALL_NODES, &addr.sin6_addr);
       setsockopt(daemon->icmp6fd, IPPROTO_IPV6, IPV6_MULTICAST_IF, &send_iface, sizeof(send_iface));
     }
-  
-  while (retry_send(sendto(daemon->icmp6fd, daemon->outpacket.iov_base, 
-			   save_counter(-1), 0, (struct sockaddr *)&addr, 
+
+  while (retry_send(sendto(daemon->icmp6fd, daemon->outpacket.iov_base,
+			   save_counter(-1), 0, (struct sockaddr *)&addr,
 			   sizeof(addr))));
-  
+
 }
 
 static void send_ra(time_t now, int iface, char *iface_name, struct in6_addr *dest)
@@ -554,19 +554,19 @@ static void send_ra(time_t now, int iface, char *iface_name, struct in6_addr *de
 }
 
 static int add_prefixes(struct in6_addr *local,  int prefix,
-			int scope, int if_index, int flags, 
+			int scope, int if_index, int flags,
 			unsigned int preferred, unsigned int valid, void *vparam)
 {
   struct ra_param *param = vparam;
 
   (void)scope; /* warning */
-  
+
   if (if_index == param->ind)
     {
       if (IN6_IS_ADDR_LINKLOCAL(local))
 	{
 	  /* Can there be more than one LL address?
-	     Select the one with the longest preferred time 
+	     Select the one with the longest preferred time
 	     if there is. */
 	  if (preferred > param->link_pref_time)
 	    {
@@ -585,7 +585,7 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 	  int off_link = 0;
 	  unsigned int time = 0xffffffff;
 	  struct dhcp_context *context;
-	  
+
 	  for (context = daemon->dhcp6; context; context = context->next)
 	    if (!(context->flags & (CONTEXT_TEMPLATE | CONTEXT_OLD)) &&
 		prefix <= context->prefix &&
@@ -594,12 +594,12 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 	      {
 		context->saved_valid = valid;
 
-		if (context->flags & CONTEXT_RA) 
+		if (context->flags & CONTEXT_RA)
 		  {
 		    do_slaac = 1;
 		    if (context->flags & CONTEXT_DHCP)
 		      {
-			param->other = 1; 
+			param->other = 1;
 			if (!(context->flags & CONTEXT_RA_STATELESS))
 			  param->managed = 1;
 		      }
@@ -613,8 +613,8 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 		    param->other = 1;
 		  }
 
-		/* Configured to advertise router address, not prefix. See RFC 3775 7.2 
-		 In this case we do all addresses associated with a context, 
+		/* Configured to advertise router address, not prefix. See RFC 3775 7.2
+		 In this case we do all addresses associated with a context,
 		 hence the real_prefix setting here. */
 		if (context->flags & CONTEXT_RA_ROUTER)
 		  {
@@ -633,7 +633,7 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 
 		if (context->flags & CONTEXT_DEPRECATE)
 		  deprecate = 1;
-		
+
 		if (context->flags & CONTEXT_CONSTRUCTED)
 		  constructed = 1;
 
@@ -644,8 +644,8 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 		    context->netid.next = param->tags;
 		    param->tags = &context->netid;
 		  }
-		  
-		/* subsequent prefixes on the same interface 
+
+		/* subsequent prefixes on the same interface
 		   and subsequent instances of this prefix don't need timers.
 		   Be careful not to find the same prefix twice with different
 		   addresses unless we're advertising the actual addresses. */
@@ -659,7 +659,7 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 		  }
 
 		param->first = 0;
-		/* found_context is the _last_ one we found, so if there's 
+		/* found_context is the _last_ one we found, so if there's
 		   more than one, it's not the first. */
 		param->found_context = context;
 	      }
@@ -667,17 +667,17 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 	  /* configured time is ceiling */
 	  if (!constructed || valid > time)
 	    valid = time;
-	  
+
 	  if (flags & IFACE_DEPRECATED)
 	    preferred = 0;
-	  
+
 	  if (deprecate)
 	    time = 0;
-	  
+
 	  /* configured time is ceiling */
 	  if (!constructed || preferred > time)
 	    preferred = time;
-	  
+
 	  if (IN6_IS_ADDR_ULA(local))
 	    {
 	      if (preferred > param->ula_pref_time)
@@ -686,7 +686,7 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 		  param->ula = *local;
 		}
 	    }
-	  else 
+	  else
 	    {
 	      if (preferred > param->glob_pref_time)
 		{
@@ -694,17 +694,17 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 		  param->link_global = *local;
 		}
 	    }
-	  
+
 	  if (real_prefix != 0)
 	    {
 	      struct prefix_opt *opt;
-	     	      
+
 	      if ((opt = expand(sizeof(struct prefix_opt))))
 		{
 		  /* zero net part of address */
 		  if (!adv_router)
 		    setaddr6part(local, addr6part(local) & ~((real_prefix == 64) ? (u64)-1LL : (1LLU << (128 - real_prefix)) - 1LLU));
-		  
+
 		  opt->type = ICMP6_OPT_PREFIX;
 		  opt->len = 4;
 		  opt->prefix_len = real_prefix;
@@ -717,16 +717,16 @@ static int add_prefixes(struct in6_addr *local,  int prefix,
 		    opt->flags |= 0x20;
 		  opt->valid_lifetime = htonl(valid);
 		  opt->preferred_lifetime = htonl(preferred);
-		  opt->reserved = 0; 
+		  opt->reserved = 0;
 		  opt->prefix = *local;
-		  
+
 		  inet_ntop(AF_INET6, local, daemon->addrbuff, ADDRSTRLEN);
 		  if (!option_bool(OPT_QUIET_RA))
-		    my_syslog(MS_DHCP | LOG_INFO, "RTR-ADVERT(%s) %s", param->if_name, daemon->addrbuff); 		    
+		    my_syslog(MS_DHCP | LOG_INFO, "RTR-ADVERT(%s) %s", param->if_name, daemon->addrbuff);
 		}
 	    }
 	}
-    }          
+    }
   return 1;
 }
 
@@ -757,7 +757,7 @@ time_t periodic_ra(time_t now)
   struct dhcp_context *context;
   time_t next_event;
   struct alias_param aparam;
-    
+
   param.now = now;
   param.iface = 0;
 
@@ -769,20 +769,20 @@ time_t periodic_ra(time_t now)
 	  {
 	    if (difftime(context->ra_time, now) <= 0.0)
 	      break; /* overdue */
-	    
+
 	    if (next_event == 0 || difftime(next_event, context->ra_time) > 0.0)
 	      next_event = context->ra_time;
 	  }
-      
+
       /* none overdue */
       if (!context)
 	break;
-      
-      if ((context->flags & CONTEXT_OLD) && 
-	  context->if_index != 0 && 
+
+      if ((context->flags & CONTEXT_OLD) &&
+	  context->if_index != 0 &&
 	  indextoname(daemon->icmp6fd, context->if_index, param.name))
 	{
-	  /* A context for an old address. We'll not find the interface by 
+	  /* A context for an old address. We'll not find the interface by
 	     looking for addresses, but we know it anyway, since the context is
 	     constructed */
 	  param.iface = context->if_index;
@@ -790,12 +790,12 @@ time_t periodic_ra(time_t now)
 	}
       else if (iface_enumerate(AF_INET6, &param, iface_search))
 	/* There's a context overdue, but we can't find an interface
-	   associated with it, because it's for a subnet we dont 
+	   associated with it, because it's for a subnet we dont
 	   have an interface on. Probably we're doing DHCP on
 	   a remote subnet via a relay. Zero the timer, since we won't
 	   ever be able to send ra's and satisfy it. */
 	context->ra_time = 0;
-      
+
       if (param.iface != 0 &&
 	  iface_check(AF_LOCAL, NULL, param.name, NULL))
 	{
@@ -805,7 +805,7 @@ time_t periodic_ra(time_t now)
 	      break;
 	  if (!tmp)
             {
-              send_ra(now, param.iface, param.name, NULL); 
+              send_ra(now, param.iface, param.name, NULL);
 
               /* Also send on all interfaces that are aliases of this
                  one. */
@@ -856,7 +856,7 @@ time_t periodic_ra(time_t now)
                   }
             }
 	}
-    }      
+    }
   return next_event;
 }
 
@@ -883,7 +883,7 @@ static int send_ra_to_aliases(int index, unsigned int type, char *mac, size_t ma
 }
 
 static int iface_search(struct in6_addr *local,  int prefix,
-			int scope, int if_index, int flags, 
+			int scope, int if_index, int flags,
 			int preferred, int valid, void *vparam)
 {
   struct search_param *param = vparam;
@@ -892,45 +892,45 @@ static int iface_search(struct in6_addr *local,  int prefix,
   (void)scope;
   (void)preferred;
   (void)valid;
- 
+
   for (context = daemon->dhcp6; context; context = context->next)
     if (!(context->flags & (CONTEXT_TEMPLATE | CONTEXT_OLD)) &&
 	prefix <= context->prefix &&
 	is_same_net6(local, &context->start6, context->prefix) &&
 	is_same_net6(local, &context->end6, context->prefix) &&
-	context->ra_time != 0 && 
+	context->ra_time != 0 &&
 	difftime(context->ra_time, param->now) <= 0.0)
       {
-	/* found an interface that's overdue for RA determine new 
+	/* found an interface that's overdue for RA determine new
 	   timeout value and arrange for RA to be sent unless interface is
 	   still doing DAD.*/
-	
+
 	if (!(flags & IFACE_TENTATIVE))
 	  param->iface = if_index;
-	
+
 	/* should never fail */
 	if (!indextoname(daemon->icmp6fd, if_index, param->name))
 	  {
 	    param->iface = 0;
 	    return 0;
 	  }
-	
+
 	new_timeout(context, param->name, param->now);
-	
-	/* zero timers for other contexts on the same subnet, so they don't timeout 
+
+	/* zero timers for other contexts on the same subnet, so they don't timeout
 	   independently */
 	for (context = context->next; context; context = context->next)
 	  if (prefix <= context->prefix &&
 	      is_same_net6(local, &context->start6, context->prefix) &&
 	      is_same_net6(local, &context->end6, context->prefix))
 	    context->ra_time = 0;
-	
+
 	return 0; /* found, abort */
       }
-  
+
   return 1; /* keep searching */
 }
- 
+
 static void new_timeout(struct dhcp_context *context, char *iface_name, time_t now)
 {
   if (difftime(now, context->ra_short_period_start) < 60.0)
@@ -947,7 +947,7 @@ static void new_timeout(struct dhcp_context *context, char *iface_name, time_t n
 static struct ra_interface *find_iface_param(char *iface)
 {
   struct ra_interface *ra;
-  
+
   for (ra = daemon->ra_interfaces; ra; ra = ra->next)
     if (wildcard_match(ra->name, iface))
       return ra;
@@ -958,7 +958,7 @@ static struct ra_interface *find_iface_param(char *iface)
 static unsigned int calc_interval(struct ra_interface *ra)
 {
   int interval = 600;
-  
+
   if (ra && ra->interval != 0)
     {
       interval = ra->interval;
@@ -967,14 +967,14 @@ static unsigned int calc_interval(struct ra_interface *ra)
       else if (interval < 4)
 	interval = 4;
     }
-  
+
   return (unsigned int)interval;
 }
 
 static unsigned int calc_lifetime(struct ra_interface *ra)
 {
   int lifetime, interval = (int)calc_interval(ra);
-  
+
   if (!ra || ra->lifetime == -1) /* not specified */
     lifetime = 3 * interval;
   else
@@ -985,7 +985,7 @@ static unsigned int calc_lifetime(struct ra_interface *ra)
       else if (lifetime > 9000)
 	lifetime = 9000;
     }
-  
+
   return (unsigned int)lifetime;
 }
 
@@ -993,7 +993,7 @@ static unsigned int calc_prio(struct ra_interface *ra)
 {
   if (ra)
     return ra->prio;
-  
+
   return 0;
 }
 

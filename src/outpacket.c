@@ -4,19 +4,19 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
 #include "dnsmasq.h"
- 
+
 #ifdef HAVE_DHCP6
 
 static size_t outpacket_counter;
@@ -25,7 +25,7 @@ void end_opt6(int container)
 {
    void *p = daemon->outpacket.iov_base + container + 2;
    u16 len = outpacket_counter - container - 4 ;
-   
+
    PUTSHORT(len, p);
 }
 
@@ -34,14 +34,14 @@ void reset_counter(void)
   /* Clear out buffer when starting from beginning */
   if (daemon->outpacket.iov_base)
     memset(daemon->outpacket.iov_base, 0, daemon->outpacket.iov_len);
- 
+
   save_counter(0);
 }
 
 int save_counter(int newval)
 {
   int ret = outpacket_counter;
-  
+
   if (newval != -1)
     outpacket_counter = newval;
 
@@ -58,10 +58,10 @@ void *expand(size_t headroom)
       outpacket_counter += headroom;
       return ret;
     }
-  
+
   return NULL;
 }
-    
+
 int new_opt6(int opt)
 {
   int ret = outpacket_counter;
@@ -81,16 +81,16 @@ void *put_opt6(void *data, size_t len)
   void *p;
 
   if ((p = expand(len)) && data)
-    memcpy(p, data, len);   
-  
+    memcpy(p, data, len);
+
   return p;
 }
-  
+
 void put_opt6_long(unsigned int val)
 {
   void *p;
-  
-  if ((p = expand(4)))  
+
+  if ((p = expand(4)))
     PUTLONG(val, p);
 }
 
@@ -99,7 +99,7 @@ void put_opt6_short(unsigned int val)
   void *p;
 
   if ((p = expand(2)))
-    PUTSHORT(val, p);   
+    PUTSHORT(val, p);
 }
 
 void put_opt6_char(unsigned int val)
@@ -107,7 +107,7 @@ void put_opt6_char(unsigned int val)
   unsigned char *p;
 
   if ((p = expand(1)))
-    *p = val;   
+    *p = val;
 }
 
 void put_opt6_string(char *s)

@@ -16,14 +16,14 @@
    and print (to stdout) the time remaining in any lease for the given
    address. The time is given as string printed to stdout.
 
-   If an error occurs or no lease exists for the given address, 
+   If an error occurs or no lease exists for the given address,
    nothing is sent to stdout a message is sent to stderr and a
    non-zero error code is returned.
 
-   This version requires dnsmasq 2.67 or later. 
+   This version requires dnsmasq 2.67 or later.
 */
 
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -71,14 +71,14 @@ struct dhcp_packet {
 
 static unsigned char *option_find1(unsigned char *p, unsigned char *end, int opt, int minsize)
 {
-  while (*p != OPTION_END) 
+  while (*p != OPTION_END)
     {
       if (p >= end)
         return NULL; /* malformed packet */
       else if (*p == OPTION_PAD)
         p++;
-      else 
-        { 
+      else
+        {
           int opt_len;
           if (p >= end - 2)
             return NULL; /* malformed packet */
@@ -90,14 +90,14 @@ static unsigned char *option_find1(unsigned char *p, unsigned char *end, int opt
           p += opt_len + 2;
         }
     }
-  
+
   return opt == OPTION_END ? p : NULL;
 }
- 
+
 static unsigned char *option_find(struct dhcp_packet *mess, size_t size, int opt_type, int minsize)
 {
   unsigned char *ret, *overload;
-  
+
   /* skip over DHCP cookie; */
   if ((ret = option_find1(&mess->options[0], ((unsigned char *)mess) + size, opt_type, minsize)))
     return ret;
@@ -105,7 +105,7 @@ static unsigned char *option_find(struct dhcp_packet *mess, size_t size, int opt
   /* look for overload option. */
   if (!(overload = option_find1(&mess->options[0], ((unsigned char *)mess) + size, OPTION_OVERLOAD, 1)))
     return NULL;
-  
+
   /* Can we look in filename area ? */
   if ((overload[2] & 1) &&
       (ret = option_find1(&mess->file[0], &mess->file[128], opt_type, minsize)))
@@ -125,7 +125,7 @@ static unsigned int option_uint(unsigned char *opt, int size)
   unsigned int ret = 0;
   int i;
   unsigned char *p = option_ptr(opt);
-  
+
   for (i = 0; i < size; i++)
     ret = (ret << 8) | *p++;
 
@@ -133,16 +133,16 @@ static unsigned int option_uint(unsigned char *opt, int size)
 }
 
 int main(int argc, char **argv)
-{ 
+{
   struct in_addr lease;
   struct dhcp_packet packet;
   unsigned char *p = packet.options;
   struct sockaddr_in dest;
   int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
   ssize_t rc;
-  
+
   if (argc < 2)
-    { 
+    {
       fprintf(stderr, "usage: dhcp_lease_time <address>\n");
       exit(1);
     }
@@ -152,11 +152,11 @@ int main(int argc, char **argv)
       perror("cannot create socket");
       exit(1);
     }
- 
+
   lease.s_addr = inet_addr(argv[1]);
-   
+
   memset(&packet, 0, sizeof(packet));
- 
+
   packet.hlen = 0;
   packet.htype = 0;
 
@@ -173,14 +173,14 @@ int main(int argc, char **argv)
   *(p++) = OPTION_REQUESTED_OPTIONS;
   *(p++) = 1;
   *(p++) = OPTION_LEASE_TIME;
-  
+
   *(p++) = OPTION_END;
- 
-  dest.sin_family = AF_INET; 
+
+  dest.sin_family = AF_INET;
   dest.sin_addr.s_addr = inet_addr("127.0.0.1");
   dest.sin_port = ntohs(DHCP_SERVER_PORT);
-  
-  if (sendto(fd, &packet, sizeof(packet), 0, 
+
+  if (sendto(fd, &packet, sizeof(packet), 0,
 	     (struct sockaddr *)&dest, sizeof(dest)) == -1)
     {
       perror("sendto failed");
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
   alarm(3); /* noddy timeout. */
 
   rc = recv(fd, &packet, sizeof(packet), 0);
-  
+
   if (rc < (ssize_t)(sizeof(packet) - sizeof(packet.options)))
     {
       perror("recv failed");

@@ -4,12 +4,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -28,14 +28,14 @@ int get_incoming_mark(union mysockaddr *peer_addr, union all_addr *local_addr, i
 {
   struct nf_conntrack *ct;
   struct nfct_handle *h;
-  
+
   gotit = 0;
-  
-  if ((ct = nfct_new())) 
+
+  if ((ct = nfct_new()))
     {
       nfct_set_attr_u8(ct, ATTR_L4PROTO, istcp ? IPPROTO_TCP : IPPROTO_UDP);
       nfct_set_attr_u16(ct, ATTR_PORT_DST, htons(daemon->port));
-      
+
       if (peer_addr->sa.sa_family == AF_INET6)
 	{
 	  nfct_set_attr_u8(ct, ATTR_L3PROTO, AF_INET6);
@@ -50,11 +50,11 @@ int get_incoming_mark(union mysockaddr *peer_addr, union all_addr *local_addr, i
 	  nfct_set_attr_u16(ct, ATTR_PORT_SRC, peer_addr->in.sin_port);
 	  nfct_set_attr_u32(ct, ATTR_IPV4_DST, local_addr->addr4.s_addr);
 	}
-      
-      
-      if ((h = nfct_open(CONNTRACK, 0))) 
+
+
+      if ((h = nfct_open(CONNTRACK, 0)))
 	{
-	  nfct_callback_register(h, NFCT_T_ALL, callback, (void *)markp);  
+	  nfct_callback_register(h, NFCT_T_ALL, callback, (void *)markp);
 	  if (nfct_query(h, NFCT_Q_GET, ct) == -1)
 	    {
 	      static int warned = 0;
@@ -64,7 +64,7 @@ int get_incoming_mark(union mysockaddr *peer_addr, union all_addr *local_addr, i
 		  warned = 1;
 		}
 	    }
-	  nfct_close(h);  
+	  nfct_close(h);
 	}
       nfct_destroy(ct);
     }
@@ -83,6 +83,6 @@ static int callback(enum nf_conntrack_msg_type type, struct nf_conntrack *ct, vo
 }
 
 #endif
-  
+
 
 

@@ -4,12 +4,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -22,11 +22,11 @@ static unsigned int blockdata_count, blockdata_hwm, blockdata_alloced;
 static void blockdata_expand(int n)
 {
   struct blockdata *new = whine_malloc(n * sizeof(struct blockdata));
-  
+
   if (new)
     {
       int i;
-      
+
       new[n-1].next = keyblock_free;
       keyblock_free = new;
 
@@ -45,18 +45,18 @@ void blockdata_init(void)
   blockdata_count = 0;
   blockdata_hwm = 0;
 
-  /* Note that daemon->cachesize is enforced to have non-zero size if OPT_DNSSEC_VALID is set */  
+  /* Note that daemon->cachesize is enforced to have non-zero size if OPT_DNSSEC_VALID is set */
   if (option_bool(OPT_DNSSEC_VALID))
     blockdata_expand(daemon->cachesize);
 }
 
 void blockdata_report(void)
 {
-  my_syslog(LOG_INFO, _("pool memory in use %u, max %u, allocated %u"), 
-	    blockdata_count * sizeof(struct blockdata),  
-	    blockdata_hwm * sizeof(struct blockdata),  
+  my_syslog(LOG_INFO, _("pool memory in use %u, max %u, allocated %u"),
+	    blockdata_count * sizeof(struct blockdata),
+	    blockdata_hwm * sizeof(struct blockdata),
 	    blockdata_alloced * sizeof(struct blockdata));
-} 
+}
 
 static struct blockdata *blockdata_alloc_real(int fd, char *data, size_t len)
 {
@@ -68,12 +68,12 @@ static struct blockdata *blockdata_alloc_real(int fd, char *data, size_t len)
     {
       if (!keyblock_free)
 	blockdata_expand(50);
-      
+
       if (keyblock_free)
 	{
 	  block = keyblock_free;
 	  keyblock_free = block->next;
-	  blockdata_count++; 
+	  blockdata_count++;
 	}
       else
 	{
@@ -81,10 +81,10 @@ static struct blockdata *blockdata_alloc_real(int fd, char *data, size_t len)
 	  blockdata_free(ret);
 	  return NULL;
 	}
-       
+
       if (blockdata_hwm < blockdata_count)
-	blockdata_hwm = blockdata_count; 
-      
+	blockdata_hwm = blockdata_count;
+
       blen = len > KEYBLOCK_LEN ? KEYBLOCK_LEN : len;
       if (data)
 	{
@@ -102,7 +102,7 @@ static struct blockdata *blockdata_alloc_real(int fd, char *data, size_t len)
       prev = &block->next;
       block->next = NULL;
     }
-  
+
   return ret;
 }
 
@@ -114,13 +114,13 @@ struct blockdata *blockdata_alloc(char *data, size_t len)
 void blockdata_free(struct blockdata *blocks)
 {
   struct blockdata *tmp;
-  
+
   if (blocks)
     {
       for (tmp = blocks; tmp->next; tmp = tmp->next)
 	blockdata_count--;
       tmp->next = keyblock_free;
-      keyblock_free = blocks; 
+      keyblock_free = blocks;
       blockdata_count--;
     }
 }
@@ -131,10 +131,10 @@ void *blockdata_retrieve(struct blockdata *block, size_t len, void *data)
   size_t blen;
   struct  blockdata *b;
   void *new, *d;
-  
+
   static unsigned int buff_len = 0;
   static unsigned char *buff = NULL;
-   
+
   if (!data)
     {
       if (len > buff_len)
@@ -147,7 +147,7 @@ void *blockdata_retrieve(struct blockdata *block, size_t len, void *data)
 	}
       data = buff;
     }
-  
+
   for (d = data, b = block; len > 0 && b;  b = b->next)
     {
       blen = len > KEYBLOCK_LEN ? KEYBLOCK_LEN : len;
